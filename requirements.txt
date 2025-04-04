@@ -1,0 +1,6 @@
+requests
+python-telegram-bot
+nest_asyncio
+aiohttp
+asyncpg
+aiogram==2.24
