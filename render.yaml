@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: my-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python mtrepo.py"
