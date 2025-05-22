@@ -14,13 +14,11 @@ import pytz
 
 nest_asyncio.apply()
 
-API_TOKEN = '7697200759:AAFntqKowNVKJElbzDQakcE0HzSuGI0y1HY'
-ADMIN_CHAT_ID = -4665694960
-USER_CHAT_ID = 5283100992
-LOG_CHAT_ID = -1002411396364
-ALLOWED_USERS = [5283100992, 6340673182, 5344318601, 1552417677, 1385118926, 6139706645, 5222780613]
-GROUP_ID = -1002268486160
-LOG_CHAT_ID = -4665694960
+API_TOKEN = 'here' # Айпи токен бота
+ADMIN_CHAT_ID = -12345 # Чат куда будут приходить репорты
+USER_CHAT_ID = 13543 # Твой айди
+LOG_CHAT_ID = -231343 # Чат куда приходят логи
+ALLOWED_USERS = [1231, 1332, 123321, 213213, 3123213, 213123, 231231] # Айди админов
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -85,8 +83,8 @@ DB_PATH = "database.db"  # Файл бази даних SQLite
 def create_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Створення таблиці з усіма необхідними стовпцями
+
+  # После перезагрузки бота, бд полностью очищается
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,9 +105,9 @@ def create_db():
 create_db()
 
 async def show_reports(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id  # Отримуємо ID користувача
+    user_id = update.message.from_user.id  
 
-    if user_id not in ALLOWED_USERS:  # Перевіряємо, чи є користувач у списку дозволених
+    if user_id not in ALLOWED_USERS: 
         await update.message.reply_text("У вас нету доступа к этой команде.")
         return
 
@@ -125,7 +123,6 @@ async def show_reports(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         report_message = "Нету репортов."
 
-    # Відправка повідомлення без попереднього перегляду веб-сторінок
     await update.message.reply_text(report_message, disable_web_page_preview=True)
 
 def get_reports():
@@ -156,10 +153,8 @@ def save_report(user_id, message_id, reason, reporter_name, reported_name, messa
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     
-    # Отримуємо поточний час у МСК
     report_time = datetime.now(moscow_tz).strftime('%Y-%m-%d %H:%M:%S')
     
-    # Вставляємо новий репорт з усіма даними
     cur.execute('''
         INSERT INTO reports (user_id, message_id, report_text, report_time, reporter_name, reported_name, message_link) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -223,9 +218,8 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
     
-    # Сохранение репорта в базу
-    await log_action(f"📌 Репорт отправил {update.message.from_user.full_name} ({user_id}) с причиной {reason}")
-    save_report(user_id, message_id, reason, update.message.from_user.full_name, update.message.reply_to_message.from_user.full_name, f"https://t.me/{update.message.chat.username}/{message_id}")# Функция обработки репорта
+    await log_action(f"📌 Репорт отправил {update.message.from_user.full_name} ({user_id}) с причиной {reason}") # Отправка сообщения в лог-чат
+    save_report(user_id, message_id, reason, update.message.from_user.full_name, update.message.reply_to_message.from_user.full_name, f"https://t.me/{update.message.chat.username}/{message_id}")#сохранение репорта в бд
 
 async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -285,6 +279,7 @@ async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
 
+        # Разделения пинга на части, так как тг позволяет пинговать только 3 человека в 4 секунды, если больше 6 человек, добавь еще 1 часть
         if admin_mentions:
             half = len(admin_mentions) // 2
             await asyncio.sleep(4)
@@ -299,48 +294,7 @@ async def handle_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text("❌ Репорт отменен.")
         await log_action(f"❌ Репорт отменён пользователем {query.from_user.full_name} ({query.from_user.id})")
 
-# Функция обработки пинга администраторов
-async def handle_ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    data = query.data.split("_")
-    
-    if len(data) < 3:
-        await query.message.edit_text("❌ Ошибка: неправильный формат данных!")
-        return
-
-    action = data[0]  # Действие: ping
-
-    if len(data) == 3:
-        ping_answer = data[2]
-        
-        if ping_answer == "yes":
-            await query.message.edit_text("⏳ Отправка репорта...")
-
-            # Получаем администраторов
-            admins = await bot.get_chat_administrators(ADMIN_CHAT_ID)
-            admin_mentions = [f"@{admin.user.username}" for admin in admins if admin.user.username]
-
-            # Отправляем репорт и пинг
-            await bot.send_message(ADMIN_CHAT_ID, "Репорт от пользователя", parse_mode=ParseMode.HTML)
-
-            if admin_mentions:
-                half = len(admin_mentions) // 2
-                await asyncio.sleep(4)
-                await bot.send_message(ADMIN_CHAT_ID, "Первая часть админов: " + " ".join(admin_mentions[:half]))
-                await asyncio.sleep(4)
-                await bot.send_message(ADMIN_CHAT_ID, "Вторая часть админов: " + " ".join(admin_mentions[half:]))
-
-            await query.message.edit_text("✅ Репорт и пинг отправлены!")
-        elif ping_answer == "no":
-            await query.message.edit_text("❌ Репорт отправлен без пинга.")
-        else:
-            await query.message.edit_text("❌ Ошибка: неверный ответ на вопрос о пинге.")
-    else:
-        await query.message.edit_text("❌ Ошибка: неправильный формат данных для пинга.")
-
-# Функция одержания ID чату
+# Для отправки сообщений
 async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
     # Юзаем InlineKeyboardButton для кнопки копирования ID
@@ -436,46 +390,6 @@ async def send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Збереження повідомлень у словнику {chat_id: {message_id: текст}}
 message_storage = {}
 
-async def save_message(update: Update, context: CallbackContext):
-    """Зберігає повідомлення у словнику"""
-    if update.message:
-        chat_id = update.message.chat_id
-        message_id = update.message.message_id
-        text = update.message.text or "[MEDIA]"
-        user = update.message.from_user.full_name
-
-        if chat_id not in message_storage:
-            message_storage[chat_id] = {}
-
-        message_storage[chat_id][message_id] = (user, text)
-
-async def check_deleted_messages(context: CallbackContext):
-    """Перевіряє, які повідомлення ще існують"""
-    for chat_id, messages in message_storage.items():
-        to_delete = []
-        for message_id in messages:
-            try:
-                await context.bot.forward_message(chat_id=chat_id, from_chat_id=chat_id, message_id=message_id)
-            except Exception:
-                # Якщо forward_message не вдається – значить, повідомлення видалене
-                user, text = messages[message_id]
-                log_msg = f"🚫 Видалено повідомлення!\n👤 {user}\n💬 {text}"
-                print(log_msg)  # Лог для тесту
-                to_delete.append(message_id)
-
-        # Видаляємо записані повідомлення, які більше не існують
-        for msg_id in to_delete:
-            del message_storage[chat_id][msg_id]
-
-async def start_checking(app: Application):
-    """Запускає перевірку видалених повідомлень кожні 10 секунд"""
-    while True:
-        await check_deleted_messages(app)
-        await asyncio.sleep(10)  # Перевірка кожні 10 секунд
-
-
-app.add_handler(MessageHandler(filters.Chat(GROUP_ID) & ~filters.Command(), save_message))
-
 # Добавляем команду /send
 app.add_handler(CommandHandler("send", send_message))
 
@@ -488,7 +402,6 @@ app.add_handler(CommandHandler("show_reports", show_reports))
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("report", report_command))
 app.add_handler(CallbackQueryHandler(handle_report, pattern="^(confirm|cancel)_"))
-app.add_handler(CallbackQueryHandler(handle_ping, pattern="^(ping)_"))
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
 app.add_handler(CallbackQueryHandler(handle_copy_id, pattern="^copy_"))
 
