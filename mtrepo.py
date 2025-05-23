@@ -275,44 +275,8 @@ async def handle_message(update: Update, context):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text.strip()
 
-    if message.lower() == "Неко".lower():
-        admins = await bot.get_chat_administrators(ADMIN_CHAT_ID)
-        if admins:
-            random_admin = random.choice(admins)
-            random_username = random_admin.user.username if random_admin.user.username else "unknown_user"
-            sent_message = await update.message.reply_text("вычисления кошко-девочки по айпи💻")
-            await asyncio.sleep(5)
-            await sent_message.edit_text(f"Кошко-девочка вычислена! Она находится у @{random_username}")
-        else:
-            await update.message.reply_text("❌ Не удалось получить администраторов для вычислений!")
-
-    elif message.lower() == "Пинг".lower():
+    if message.lower() == "Пинг".lower():
         await update.message.reply_text("А нахуя он тебе?")
-
-    elif message.lower() == "РаФа".lower():
-        response = random.choice(rafa_responses)
-        await update.message.reply_text(f"<b>{response}</b>", parse_mode=ParseMode.HTML)
-    
-    elif message.lower() == "РаФу".lower():
-        response = random.choice(rafu_responses)
-        await update.message.reply_text(response, parse_mode=ParseMode.HTML)
-
-    elif message.lower() == "привет".lower():  # Добавляем проверку на "привет" без учета регистра
-        current_time = datetime.now(timezone.utc) + timedelta(hours=3)
-        hour = current_time.hour
-
-        if 5 <= hour < 7:
-            response = "А ты спать не хочешь?"
-        elif 7 <= hour < 13:
-            response = "Доброго утра!"
-        elif 13 <= hour < 17:
-            response = "Хорошего дня!"
-        elif 17 <= hour < 22:
-            response = "Доброго вечера!"
-        else:
-            response = "А ну ка спать!"
-
-        await update.message.reply_text(response)
 
 # Функция для отправки сообщений через бота
 async def send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
