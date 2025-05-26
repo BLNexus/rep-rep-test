@@ -4,3 +4,7 @@ nest_asyncio
 aiohttp
 asyncpg
 aiogram==2.24
+aiopg
+apscheduler
+flask
+httpx
